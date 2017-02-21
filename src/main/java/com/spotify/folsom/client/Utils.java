@@ -33,10 +33,6 @@ public final class Utils {
   private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
 
-  /**
-   * The Guava {@link com.google.common.util.concurrent.MoreExecutors#sameThreadExecutor()}
-   * takes locks, so roll our own.
-   */
   public static final Executor SAME_THREAD_EXECUTOR = new Executor() {
     @Override
     public void execute(final Runnable command) {
@@ -51,7 +47,11 @@ public final class Utils {
   public static <I, O> ListenableFuture<O> transform(
           final ListenableFuture<I> input,
           final AsyncFunction<? super I, ? extends O> function) {
-    return Futures.transform(input, (Function<? super I, ? extends O>) function, SAME_THREAD_EXECUTOR);
+    return Futures.transform(
+            input,
+            (Function<? super I, ? extends O>) function,
+            SAME_THREAD_EXECUTOR
+    );
   }
 
   public static <I, O> ListenableFuture<O> transform(
