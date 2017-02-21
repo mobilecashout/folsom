@@ -16,26 +16,22 @@
 
 package com.spotify.folsom.client;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.spotify.folsom.GetResult;
 import com.spotify.folsom.MemcacheStatus;
 import com.spotify.folsom.Metrics;
-import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.MetricName;
-import com.yammer.metrics.core.MetricsRegistry;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
 
 import java.util.List;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 
-
-public class YammerMetrics implements Metrics {
+public class DropwizardMetrics implements Metrics {
 
   public static final String GROUP = "com.spotify.folsom";
 
@@ -69,50 +65,50 @@ public class YammerMetrics implements Metrics {
   private volatile OutstandingRequestsGauge internalOutstandingReqGauge;
   private final Gauge<Integer> outstandingRequestsGauge;
 
-  public YammerMetrics(final MetricsRegistry registry) {
-    this.gets = registry.newTimer(name("get", "requests"), SECONDS, SECONDS);
-    this.getSuccesses = registry.newMeter(name("get", "successes"), "Successes", SECONDS);
-    this.getHits = registry.newMeter(name("get", "hits"), "Hits", SECONDS);
-    this.getMisses = registry.newMeter(name("get", "misses"), "Misses", SECONDS);
-    this.getFailures = registry.newMeter(name("get", "failures"), "Failures", SECONDS);
+  public DropwizardMetrics(final MetricRegistry registry) {
+    this.gets = registry.timer(name("get", "requests"));
+    this.getSuccesses = registry.meter(name("get", "successes"));
+    this.getHits = registry.meter(name("get", "hits"));
+    this.getMisses = registry.meter(name("get", "misses"));
+    this.getFailures = registry.meter(name("get", "failures"));
 
-    this.multigets = registry.newTimer(name("multiget", "requests"), SECONDS, SECONDS);
-    this.multigetSuccesses = registry.newMeter(name("multiget", "successes"), "Successes", SECONDS);
-    this.multigetFailures = registry.newMeter(name("multiget", "failures"), "Failures", SECONDS);
+    this.multigets = registry.timer(name("multiget", "requests"));
+    this.multigetSuccesses = registry.meter(name("multiget", "successes"));
+    this.multigetFailures = registry.meter(name("multiget", "failures"));
 
-    this.sets = registry.newTimer(name("set", "requests"), SECONDS, SECONDS);
-    this.setSuccesses = registry.newMeter(name("set", "successes"), "Successes", SECONDS);
-    this.setFailures = registry.newMeter(name("set", "failures"), "Failures", SECONDS);
+    this.sets = registry.timer(name("set", "requests"));
+    this.setSuccesses = registry.meter(name("set", "successes"));
+    this.setFailures = registry.meter(name("set", "failures"));
 
-    this.deletes = registry.newTimer(name("delete", "requests"), SECONDS, SECONDS);
-    this.deleteSuccesses = registry.newMeter(name("delete", "successes"), "Successes", SECONDS);
-    this.deleteFailures = registry.newMeter(name("delete", "failures"), "Failures", SECONDS);
+    this.deletes = registry.timer(name("delete", "requests"));
+    this.deleteSuccesses = registry.meter(name("delete", "successes"));
+    this.deleteFailures = registry.meter(name("delete", "failures"));
 
-    this.incrDecrs = registry.newTimer(name("incrdecr", "requests"), SECONDS, SECONDS);
-    this.incrDecrSuccesses = registry.newMeter(name("incrdecr", "successes"), "Successes", SECONDS);
-    this.incrDecrFailures = registry.newMeter(name("incrdecr", "failures"), "Failures", SECONDS);
+    this.incrDecrs = registry.timer(name("incrdecr", "requests"));
+    this.incrDecrSuccesses = registry.meter(name("incrdecr", "successes"));
+    this.incrDecrFailures = registry.meter(name("incrdecr", "failures"));
 
-    this.touches = registry.newTimer(name("touch", "requests"), SECONDS, SECONDS);
-    this.touchSuccesses = registry.newMeter(name("touch", "successes"), "Successes", SECONDS);
-    this.touchFailures = registry.newMeter(name("touch", "failures"), "Failures", SECONDS);
+    this.touches = registry.timer(name("touch", "requests"));
+    this.touchSuccesses = registry.meter(name("touch", "successes"));
+    this.touchFailures = registry.meter(name("touch", "failures"));
 
-    final MetricName gaugeName = name("outstandingRequests", "count");
-    this.outstandingRequestsGauge = registry.newGauge(gaugeName, new Gauge<Integer>() {
+    final String gaugeName = name("outstandingRequests", "count");
+    this.outstandingRequestsGauge = registry.register(gaugeName, new Gauge<Integer>() {
       @Override
-      public Integer value() {
+      public Integer getValue() {
         return internalOutstandingReqGauge != null ?
-               internalOutstandingReqGauge.getOutstandingRequests() : 0;
+                internalOutstandingReqGauge.getOutstandingRequests() : 0;
       }
     });
   }
 
-  private MetricName name(final String type, final String name) {
-    return new MetricName(GROUP, type, name);
+  private String name(final String type, final String name) {
+    return MetricRegistry.name(GROUP, type, name);
   }
 
   @Override
   public void measureGetFuture(ListenableFuture<GetResult<byte[]>> future) {
-    final TimerContext ctx = gets.time();
+    final Timer.Context ctx = gets.time();
 
     final FutureCallback<GetResult<byte[]>> metricsCallback =
             new FutureCallback<GetResult<byte[]>>() {
@@ -138,7 +134,7 @@ public class YammerMetrics implements Metrics {
 
   @Override
   public void measureMultigetFuture(ListenableFuture<List<GetResult<byte[]>>> future) {
-    final TimerContext ctx = multigets.time();
+    final Timer.Context ctx = multigets.time();
 
     final FutureCallback<List<GetResult<byte[]>>> metricsCallback =
             new FutureCallback<List<GetResult<byte[]>>>() {
@@ -168,7 +164,7 @@ public class YammerMetrics implements Metrics {
 
   @Override
   public void measureDeleteFuture(ListenableFuture<MemcacheStatus> future) {
-    final TimerContext ctx = deletes.time();
+    final Timer.Context ctx = deletes.time();
 
     final FutureCallback<MemcacheStatus> metricsCallback = new FutureCallback<MemcacheStatus>() {
       @Override
@@ -188,7 +184,7 @@ public class YammerMetrics implements Metrics {
 
   @Override
   public void measureSetFuture(ListenableFuture<MemcacheStatus> future) {
-    final TimerContext ctx = sets.time();
+    final Timer.Context ctx = sets.time();
 
     final FutureCallback<MemcacheStatus> metricsCallback = new FutureCallback<MemcacheStatus>() {
       @Override
@@ -208,7 +204,7 @@ public class YammerMetrics implements Metrics {
 
   @Override
   public void measureIncrDecrFuture(ListenableFuture<Long> future) {
-    final TimerContext ctx = incrDecrs.time();
+    final Timer.Context ctx = incrDecrs.time();
 
     final FutureCallback<Long> metricsCallback = new FutureCallback<Long>() {
       @Override
@@ -228,7 +224,7 @@ public class YammerMetrics implements Metrics {
 
   @Override
   public void measureTouchFuture(ListenableFuture<MemcacheStatus> future) {
-    final TimerContext ctx = touches.time();
+    final Timer.Context ctx = touches.time();
 
     final FutureCallback<MemcacheStatus> metricsCallback = new FutureCallback<MemcacheStatus>() {
       @Override
